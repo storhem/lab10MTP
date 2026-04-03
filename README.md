@@ -162,6 +162,37 @@ FastAPI выигрывает за счёт удобства разработки
 
 ---
 
+## Swagger-документация (М8)
+
+### FastAPI
+
+Документация доступна автоматически после запуска сервиса:
+
+| URL | Описание |
+|-----|----------|
+| `http://localhost:8000/docs` | Swagger UI (интерактивный) |
+| `http://localhost:8000/redoc` | ReDoc |
+| `http://localhost:8000/openapi.json` | OpenAPI JSON-схема |
+
+### Gin (Go)
+
+Документация генерируется через [swaggo/swag](https://github.com/swaggo/swag).
+
+Регенерация (при изменении аннотаций):
+```bash
+cd src/go-service
+swag init --parseDependency
+```
+
+После запуска сервиса:
+
+| URL | Описание |
+|-----|----------|
+| `http://localhost:8080/swagger/index.html` | Swagger UI |
+| `http://localhost:8080/swagger/doc.json` | OpenAPI JSON-схема |
+
+---
+
 ## Запуск тестов
 
 ```bash

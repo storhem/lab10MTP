@@ -8,12 +8,16 @@ HEY=$(go env GOPATH)/bin/hey
 GIN_URL="http://localhost:8080"
 FASTAPI_URL="http://localhost:8000"
 
+echo "Сборка Go-сервиса..."
+(cd src/go-service && go build -o bin/go-service.exe .)
+
 echo "Запуск Go-сервиса..."
-GIN_MODE=release ./src/go-service/bin/go-service.exe &
+GIN_MODE=release src/go-service/bin/go-service.exe &
 GIN_PID=$!
 
 echo "Запуск FastAPI-сервиса..."
-python -m uvicorn src.fastapi-service.main:app --host 0.0.0.0 --port 8000 &
+# Запуск из директории сервиса — Python не может импортировать пакеты с дефисом
+(cd src/fastapi-service && python -m uvicorn main:app --host 0.0.0.0 --port 8000) &
 FASTAPI_PID=$!
 
 sleep 3

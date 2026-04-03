@@ -10,8 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// httpClient с явным таймаутом — предотвращает зависание при недоступном бэкенде.
-var httpClient = &http.Client{Timeout: 10 * time.Second}
+// backendTransport задаёт таймауты для проксируемых запросов.
+// ResponseHeaderTimeout — максимальное время ожидания заголовков от бэкенда.
+var backendTransport http.RoundTripper = &http.Transport{
+	ResponseHeaderTimeout: 10 * time.Second,
+}
 
 // NewProxy создаёт обратный прокси к указанному бэкенду.
 // Возвращает ошибку, если target — невалидный URL.
@@ -22,7 +25,7 @@ func NewProxy(target string) (*httputil.ReverseProxy, error) {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
-	proxy.Transport = httpClient.Transport
+	proxy.Transport = backendTransport
 
 	// Кастомный обработчик ошибок бэкенда.
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {

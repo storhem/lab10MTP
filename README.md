@@ -34,6 +34,12 @@
 ```
 .
 ├── src/
+│   ├── api-gateway/          # API-шлюз (Go, порт 8090)
+│   │   ├── gateway/
+│   │   │   ├── proxy.go      # Reverse proxy с таймаутом
+│   │   │   └── router.go     # Маршрутизация и конфигурация
+│   │   ├── main.go
+│   │   └── go.mod
 │   ├── go-service/           # Go-сервис (Gin, порт 8080)
 │   │   ├── app/router.go     # Роутер и эндпоинты
 │   │   ├── middleware/logger.go
@@ -43,7 +49,10 @@
 │       ├── main.py
 │       └── requirements.txt
 ├── tests/
-│   ├── go-service/           # Go-тесты (7 тестов)
+│   ├── api-gateway/          # Go-тесты шлюза (6 тестов)
+│   │   ├── gateway_test.go
+│   │   └── go.mod
+│   ├── go-service/           # Go-тесты (8 тестов)
 │   │   ├── router_test.go
 │   │   └── go.mod
 │   └── fastapi-service/      # Python-тесты (5 тестов)
@@ -159,6 +168,43 @@ Gin примерно в **9–12 раз быстрее** FastAPI по пропу
 - **Pydantic-валидация** добавляет время сериализации/десериализации по сравнению с Go struct.
 
 FastAPI выигрывает за счёт удобства разработки, автодокументации и экосистемы Python, а не скорости.
+
+---
+
+## API-шлюз (В2)
+
+Отдельный Go-сервис на порту **8090**, маршрутизирующий запросы к двум бэкендам.
+
+### Запуск
+
+```bash
+cd src/api-gateway
+go run .
+```
+
+Конфигурация через переменные окружения (есть дефолты):
+
+| Переменная      | Дефолт                  | Описание              |
+|-----------------|-------------------------|-----------------------|
+| `GIN_BACKEND`   | `http://localhost:8080` | Адрес Go-сервиса      |
+| `PYTHON_BACKEND`| `http://localhost:8000` | Адрес FastAPI-сервиса |
+| `GATEWAY_ADDR`  | `:8090`                 | Порт шлюза            |
+
+### Маршруты
+
+| Путь          | Куда проксируется | Пример                                |
+|---------------|-------------------|---------------------------------------|
+| `/gin/*`      | Go-сервис (Gin)   | `/gin/items` → `localhost:8080/items` |
+| `/python/*`   | FastAPI-сервис    | `/python/ping` → `localhost:8000/ping`|
+| `/health`     | Сам шлюз          | Статус и адреса бэкендов              |
+
+### Примеры запросов
+
+```bash
+curl http://localhost:8090/health
+curl http://localhost:8090/gin/ping
+curl http://localhost:8090/python/items
+```
 
 ---
 

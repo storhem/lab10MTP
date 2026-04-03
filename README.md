@@ -47,7 +47,7 @@
 │   │   └── go.mod
 │   └── fastapi-service/      # Python-сервис (FastAPI, порт 8000)
 │       ├── main.py
-│       └── requirements.txt
+│       └── requirements.txt  # fastapi, uvicorn, psutil
 ├── tests/
 │   ├── api-gateway/          # Go-тесты шлюза (6 тестов)
 │   │   ├── gateway_test.go
@@ -55,9 +55,12 @@
 │   ├── go-service/           # Go-тесты (8 тестов)
 │   │   ├── router_test.go
 │   │   └── go.mod
-│   └── fastapi-service/      # Python-тесты (5 тестов)
-│       └── test_main.py
-├── benchmark.sh              # Скрипт нагрузочного тестирования (hey)
+│   └── fastapi-service/      # Python-тесты (12 тестов)
+│       ├── conftest.py
+│       ├── test_main.py
+│       └── test_performance.py
+├── benchmark.sh              # Нагрузочное тестирование hey (M6)
+├── tests/memory_compare.py  # Сравнение памяти и производительности (В6)
 ├── .gitignore
 ├── PROMPT_LOG.md
 └── README.md
@@ -239,14 +242,62 @@ swag init --parseDependency
 
 ---
 
+## Тесты производительности (В6)
+
+### Go-бенчмарки
+
+```bash
+cd tests/go-service
+go test -bench=. -benchmem -benchtime=3s -run=^$ ./...
+```
+
+Результаты (i5-13500H, windows/386):
+
+| Хэндлер               | Итераций/сек | Время/op  | Память/op |
+|-----------------------|-------------|-----------|-----------|
+| BenchmarkPingHandler  | ~450 000    | 2 221 нс  | 824 Б     |
+| BenchmarkGetItems     | ~395 000    | 2 532 нс  | 720 Б     |
+| BenchmarkGetItemByID  | ~450 000    | 2 214 нс  | 680 Б     |
+| BenchmarkMemory       | ~38 000     | 26 438 нс | 801 Б     |
+
+### Python-бенчмарки (pytest-benchmark)
+
+```bash
+python -m pytest tests/fastapi-service/test_performance.py -v --benchmark-columns="mean,ops"
+```
+
+| Хэндлер                    | Среднее | OPS/сек |
+|----------------------------|---------|---------|
+| test_benchmark_get_items   | 2.7 мс  | 369     |
+| test_benchmark_get_item_by_id | 2.9 мс | 350   |
+| test_benchmark_ping        | 3.1 мс  | 319     |
+| test_benchmark_memory      | 3.8 мс  | 260     |
+
+### Сравнение памяти
+
+```bash
+# Запустить оба сервиса, затем:
+python tests/memory_compare.py
+```
+
+| Метрика              | Gin (Go)          | FastAPI (Python) |
+|----------------------|-------------------|------------------|
+| RSS (heap alloc)     | ~12 МБ            | ~52 МБ           |
+| Системная память     | ~19 МБ            | ~40 МБ (VMS)     |
+
+**Go потребляет в ~4 раза меньше памяти** — нет интерпретатора, статическая компиляция.
+
+---
+
 ## Запуск тестов
 
 ```bash
-# Go
-cd tests/go-service
-go test ./... -v
+# Go — сервис
+cd tests/go-service && go test ./... -v
+
+# Go — шлюз
+cd tests/api-gateway && go test ./... -v
 
 # Python
-cd <корень проекта>
 python -m pytest tests/fastapi-service/ -v
 ```

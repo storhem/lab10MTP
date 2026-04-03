@@ -78,6 +78,18 @@ func TestGetItemByIDNotFound(t *testing.T) {
 	}
 }
 
+// TestSwaggerEndpointAvailable проверяет, что /swagger/index.html отдаёт 200.
+func TestSwaggerEndpointAvailable(t *testing.T) {
+	r := app.SetupRouter()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/swagger/index.html", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected swagger UI at /swagger/index.html to return 200, got %d", w.Code)
+	}
+}
+
 // TestLoggerMiddlewareLogsFields проверяет, что middleware логирует
 // метод, путь, статус, duration и ip для каждого запроса.
 func TestLoggerMiddlewareLogsFields(t *testing.T) {

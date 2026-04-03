@@ -40,3 +40,20 @@ def test_get_item_by_id_not_found():
 def test_get_item_by_id_invalid():
     response = client.get("/items/abc")
     assert response.status_code == 422
+
+
+def test_swagger_ui_available():
+    response = client.get("/docs")
+    assert response.status_code == 200
+    assert "swagger" in response.text.lower()
+
+
+def test_openapi_schema_available():
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    schema = response.json()
+    assert schema["info"]["title"] == "Items API"
+    assert schema["info"]["version"] == "1.0.0"
+    assert "/ping" in schema["paths"]
+    assert "/items" in schema["paths"]
+    assert "/items/{item_id}" in schema["paths"]

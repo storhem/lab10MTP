@@ -1,8 +1,8 @@
 package app
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go-service/middleware"
@@ -36,9 +36,13 @@ func SetupRouter() *gin.Engine {
 	})
 
 	r.GET("/items/:id", func(c *gin.Context) {
-		idStr := c.Param("id")
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "id must be a number"})
+			return
+		}
 		for _, item := range defaultItems {
-			if fmt.Sprintf("%d", item.ID) == idStr {
+			if item.ID == id {
 				c.JSON(http.StatusOK, item)
 				return
 			}

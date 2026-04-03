@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -55,6 +56,17 @@ func TestGetItemByIDFound(t *testing.T) {
 	}
 }
 
+func TestGetItemByIDInvalidID(t *testing.T) {
+	r := app.SetupRouter()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/items/abc", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
 func TestGetItemByIDNotFound(t *testing.T) {
 	r := app.SetupRouter()
 	w := httptest.NewRecorder()
@@ -67,11 +79,11 @@ func TestGetItemByIDNotFound(t *testing.T) {
 }
 
 // TestLoggerMiddlewareLogsFields проверяет, что middleware логирует
-// метод, путь и статус для каждого запроса.
+// метод, путь, статус, duration и ip для каждого запроса.
 func TestLoggerMiddlewareLogsFields(t *testing.T) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
-	defer log.SetOutput(nil)
+	defer log.SetOutput(os.Stderr)
 
 	r := app.SetupRouter()
 	w := httptest.NewRecorder()
@@ -79,9 +91,25 @@ func TestLoggerMiddlewareLogsFields(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	logOutput := buf.String()
-	for _, expected := range []string{"GET", "/ping", "status=200"} {
+	for _, expected := range []string{"GET", "/ping", "status=200", "duration=", "ip="} {
 		if !strings.Contains(logOutput, expected) {
 			t.Errorf("log should contain %q, got: %s", expected, logOutput)
 		}
+	}
+}
+
+// TestLoggerMiddlewareLogsNonOKStatus проверяет, что статус 404 тоже логируется корректно.
+func TestLoggerMiddlewareLogsNonOKStatus(t *testing.T) {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
+	r := app.SetupRouter()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/items/999", nil)
+	r.ServeHTTP(w, req)
+
+	if !strings.Contains(buf.String(), "status=404") {
+		t.Errorf("log should contain status=404, got: %s", buf.String())
 	}
 }

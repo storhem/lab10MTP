@@ -1,3 +1,6 @@
+import os
+
+import psutil
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -21,6 +24,12 @@ class Item(BaseModel):
     price: float
 
 
+class MemoryStats(BaseModel):
+    rss_mb: float
+    vms_mb: float
+    percent: float
+
+
 class MessageResponse(BaseModel):
     message: str
 
@@ -33,6 +42,23 @@ ITEMS: list[Item] = [
     Item(id=1, name="Apple", price=1.5),
     Item(id=2, name="Banana", price=0.75),
 ]
+
+
+@app.get(
+    "/memory",
+    response_model=MemoryStats,
+    tags=["metrics"],
+    summary="Потребление памяти",
+    description="Возвращает метрики памяти текущего процесса через psutil.",
+)
+def memory():
+    proc = psutil.Process(os.getpid())
+    mem = proc.memory_info()
+    return MemoryStats(
+        rss_mb=mem.rss / 1024 / 1024,
+        vms_mb=mem.vms / 1024 / 1024,
+        percent=proc.memory_percent(),
+    )
 
 
 @app.get(

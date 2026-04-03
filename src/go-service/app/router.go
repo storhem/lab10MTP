@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"runtime"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +38,7 @@ func SetupRouter() *gin.Engine {
 	r.GET("/ping", pingHandler)
 	r.GET("/items", getItemsHandler)
 	r.GET("/items/:id", getItemByIDHandler)
+	r.GET("/memory", memoryHandler)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return r
@@ -62,6 +64,32 @@ func pingHandler(c *gin.Context) {
 // @Router      /items [get]
 func getItemsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, defaultItems)
+}
+
+// MemoryStats содержит метрики потребления памяти Go-рантайма.
+type MemoryStats struct {
+	AllocMB      float64 `json:"alloc_mb"       example:"1.2"`
+	TotalAllocMB float64 `json:"total_alloc_mb" example:"3.4"`
+	SysMB        float64 `json:"sys_mb"         example:"8.0"`
+	NumGC        uint32  `json:"num_gc"         example:"5"`
+}
+
+// memoryHandler godoc
+// @Summary     Потребление памяти
+// @Description Возвращает метрики памяти Go-рантайма (runtime.MemStats)
+// @Tags        metrics
+// @Produce     json
+// @Success     200 {object} MemoryStats
+// @Router      /memory [get]
+func memoryHandler(c *gin.Context) {
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	c.JSON(http.StatusOK, MemoryStats{
+		AllocMB:      float64(ms.Alloc) / 1024 / 1024,
+		TotalAllocMB: float64(ms.TotalAlloc) / 1024 / 1024,
+		SysMB:        float64(ms.Sys) / 1024 / 1024,
+		NumGC:        ms.NumGC,
+	})
 }
 
 // getItemByIDHandler godoc

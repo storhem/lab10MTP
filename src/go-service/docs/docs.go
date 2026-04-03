@@ -82,6 +82,26 @@ const docTemplate = `{
                 }
             }
         },
+        "/memory": {
+            "get": {
+                "description": "Возвращает метрики памяти Go-рантайма (runtime.MemStats)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "Потребление памяти",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.MemoryStats"
+                        }
+                    }
+                }
+            }
+        },
         "/ping": {
             "get": {
                 "description": "Возвращает pong — используется для health-check",
@@ -130,6 +150,27 @@ const docTemplate = `{
                 "price": {
                     "type": "number",
                     "example": 1.5
+                }
+            }
+        },
+        "app.MemoryStats": {
+            "type": "object",
+            "properties": {
+                "alloc_mb": {
+                    "type": "number",
+                    "example": 1.2
+                },
+                "num_gc": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "sys_mb": {
+                    "type": "number",
+                    "example": 8
+                },
+                "total_alloc_mb": {
+                    "type": "number",
+                    "example": 3.4
                 }
             }
         }

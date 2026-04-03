@@ -18,6 +18,21 @@ definitions:
         example: 1.5
         type: number
     type: object
+  app.MemoryStats:
+    properties:
+      alloc_mb:
+        example: 1.2
+        type: number
+      num_gc:
+        example: 5
+        type: integer
+      sys_mb:
+        example: 8
+        type: number
+      total_alloc_mb:
+        example: 3.4
+        type: number
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -70,6 +85,19 @@ paths:
       summary: Товар по ID
       tags:
       - items
+  /memory:
+    get:
+      description: Возвращает метрики памяти Go-рантайма (runtime.MemStats)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.MemoryStats'
+      summary: Потребление памяти
+      tags:
+      - metrics
   /ping:
     get:
       description: Возвращает pong — используется для health-check

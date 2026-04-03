@@ -11,7 +11,7 @@
 
 ### Средняя сложность
 - **М2** — Middleware для логирования в Go (Gin)
-- **М6** — Сравнение скорости FastAPI vs Gin под нагрузкой (wrk/ab)
+- **М6** — Сравнение скорости FastAPI vs Gin под нагрузкой (hey)
 - **М8** — Swagger-документация для FastAPI и OpenAPI для Gin
 
 ### Повышенная сложность
@@ -24,8 +24,8 @@
 
 Проект демонстрирует создание и сравнение веб-сервисов на двух языках:
 
-- **Go-сервис** (Gin) — REST API с кастомным middleware для логирования запросов: метод, путь, статус и время ответа.
-- **Python-сервис** (FastAPI) — будет добавлен в следующих заданиях.
+- **Go-сервис** (Gin) — REST API с кастомным middleware для логирования запросов.
+- **Python-сервис** (FastAPI) — REST API на базе Pydantic-моделей, запускается через Uvicorn.
 
 ---
 
@@ -34,18 +34,21 @@
 ```
 .
 ├── src/
-│   └── go-service/       # Go-сервис (Gin)
-│       ├── app/
-│       │   └── router.go # Роутер и эндпоинты
-│       ├── middleware/
-│       │   └── logger.go # Кастомный Logger middleware
-│       ├── main.go
-│       ├── go.mod
-│       └── go.sum
+│   ├── go-service/           # Go-сервис (Gin, порт 8080)
+│   │   ├── app/router.go     # Роутер и эндпоинты
+│   │   ├── middleware/logger.go
+│   │   ├── main.go
+│   │   └── go.mod
+│   └── fastapi-service/      # Python-сервис (FastAPI, порт 8000)
+│       ├── main.py
+│       └── requirements.txt
 ├── tests/
-│   └── go-service/       # Тесты Go-сервиса
-│       ├── router_test.go
-│       └── go.mod
+│   ├── go-service/           # Go-тесты (7 тестов)
+│   │   ├── router_test.go
+│   │   └── go.mod
+│   └── fastapi-service/      # Python-тесты (5 тестов)
+│       └── test_main.py
+├── benchmark.sh              # Скрипт нагрузочного тестирования (hey)
 ├── .gitignore
 ├── PROMPT_LOG.md
 └── README.md
@@ -56,60 +59,117 @@
 ## Технологии
 
 - **Go** 1.22 + [Gin](https://gin-gonic.com/)
-- **Python** (будет добавлен) + FastAPI
+- **Python** 3.13 + [FastAPI](https://fastapi.tiangolo.com/) + Uvicorn
+- **hey** — инструмент нагрузочного тестирования
 
 ---
 
 ## Запуск Go-сервиса
 
-### Требования
-- Go 1.22+
-
-### Установка зависимостей и запуск
-
 ```bash
 cd src/go-service
 go mod download
-go run .
+GIN_MODE=release go run .
 ```
 
 Сервис запустится на `http://localhost:8080`.
 
-### Эндпоинты
+---
 
-| Метод | Путь         | Описание              |
-|-------|--------------|-----------------------|
-| GET   | /ping        | Проверка работы       |
-| GET   | /items       | Список товаров        |
-| GET   | /items/:id   | Товар по ID           |
-
-### Примеры запросов
+## Запуск FastAPI-сервиса
 
 ```bash
-curl http://localhost:8080/ping
-# {"message":"pong"}
-
-curl http://localhost:8080/items
-# [{"id":1,"name":"Apple","price":1.5},{"id":2,"name":"Banana","price":0.75}]
-
-curl http://localhost:8080/items/1
-# {"id":1,"name":"Apple","price":1.5}
-
-curl http://localhost:8080/items/99
-# {"error":"item not found"}
+cd src/fastapi-service
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### Пример лога middleware
+Сервис запустится на `http://localhost:8000`.
 
+---
+
+## Эндпоинты (оба сервиса)
+
+| Метод | Путь        | Описание           |
+|-------|-------------|--------------------|
+| GET   | /ping       | Проверка работы    |
+| GET   | /items      | Список товаров     |
+| GET   | /items/{id} | Товар по ID        |
+
+---
+
+## Нагрузочное тестирование (М6)
+
+### Инструмент
+
+[hey](https://github.com/rakyll/hey) — аналог wrk/ab, кроссплатформенный.
+
+Установка: `go install github.com/rakyll/hey@latest`
+
+### Запуск бенчмарка
+
+```bash
+bash benchmark.sh
 ```
-2026/04/04 00:20:32 [GET] /ping | status=200 | duration=312µs | ip=127.0.0.1
+
+Или вручную:
+
+```bash
+hey -n 1000 -c 50 http://localhost:8080/ping
+hey -n 1000 -c 50 http://localhost:8000/ping
 ```
+
+### Результаты
+
+#### Сценарий 1 — лёгкая нагрузка: `/ping`, 1000 запросов, 50 параллельных
+
+| Метрика          | Gin (Go)    | FastAPI (Python) |
+|------------------|-------------|------------------|
+| Запросов/сек     | **28 471**  | 3 061            |
+| Среднее время    | **1.6 мс**  | 15.3 мс          |
+| Минимум          | **0.1 мс**  | 2.1 мс           |
+| p95              | **12.0 мс** | 16.3 мс          |
+| p99              | **17.8 мс** | 71.0 мс          |
+
+#### Сценарий 2 — JSON-ответ: `/items`, 1000 запросов, 50 параллельных
+
+| Метрика          | Gin (Go)    | FastAPI (Python) |
+|------------------|-------------|------------------|
+| Запросов/сек     | **20 171**  | 2 483            |
+| Среднее время    | **2.3 мс**  | 19.3 мс          |
+| p95              | **12.6 мс** | 20.6 мс          |
+| p99              | **17.5 мс** | 66.3 мс          |
+
+#### Сценарий 3 — высокая нагрузка: `/ping`, 5000 запросов, 100 параллельных
+
+| Метрика          | Gin (Go)    | FastAPI (Python) |
+|------------------|-------------|------------------|
+| Запросов/сек     | **40 364**  | 3 334            |
+| Среднее время    | **2.3 мс**  | 28.5 мс          |
+| p95              | **8.7 мс**  | 32.1 мс          |
+| p99              | **29.5 мс** | 100.4 мс         |
+
+### Вывод
+
+Gin примерно в **9–12 раз быстрее** FastAPI по пропускной способности. Причины:
+
+- **Go компилируемый язык** — нет накладных расходов интерпретатора.
+- **Gin использует httprouter** — один из самых быстрых HTTP-роутеров.
+- **FastAPI работает через ASGI (Uvicorn)** — асинхронная модель даёт гибкость (I/O-bound задачи), но при CPU-bound нагрузке проигрывает Go из-за GIL и накладных расходов asyncio.
+- **Pydantic-валидация** добавляет время сериализации/десериализации по сравнению с Go struct.
+
+FastAPI выигрывает за счёт удобства разработки, автодокументации и экосистемы Python, а не скорости.
 
 ---
 
 ## Запуск тестов
 
 ```bash
+# Go
 cd tests/go-service
 go test ./... -v
+
+# Python
+cd <корень проекта>
+python -m pytest tests/fastapi-service/ -v
 ```

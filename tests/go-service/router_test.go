@@ -78,6 +78,24 @@ func TestGetItemByIDNotFound(t *testing.T) {
 	}
 }
 
+// TestMemoryEndpoint проверяет, что /memory возвращает корректные поля MemStats.
+func TestMemoryEndpoint(t *testing.T) {
+	r := app.SetupRouter()
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/memory", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected status 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	for _, field := range []string{"alloc_mb", "sys_mb", "num_gc"} {
+		if !strings.Contains(body, field) {
+			t.Errorf("expected memory response to contain %q, got: %s", field, body)
+		}
+	}
+}
+
 // TestSwaggerEndpointAvailable проверяет, что /swagger/index.html отдаёт 200.
 func TestSwaggerEndpointAvailable(t *testing.T) {
 	r := app.SetupRouter()

@@ -1,8 +1,3 @@
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/fastapi-service"))
-
 import pytest
 from fastapi.testclient import TestClient
 from main import app
@@ -40,6 +35,16 @@ def test_get_item_by_id_not_found():
 def test_get_item_by_id_invalid():
     response = client.get("/items/abc")
     assert response.status_code == 422
+
+
+def test_memory_endpoint():
+    response = client.get("/memory")
+    assert response.status_code == 200
+    data = response.json()
+    assert "rss_mb" in data
+    assert "vms_mb" in data
+    assert "percent" in data
+    assert data["rss_mb"] > 0
 
 
 def test_swagger_ui_available():
